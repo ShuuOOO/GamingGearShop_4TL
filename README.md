@@ -49,5 +49,4 @@ GamingGearShop_4TL/
  │    ├── wwwroot/        # Static files (CSS, JS, Images)
  │    ├── appsettings.json# Environment & Connection configurations
  │    └── Program.cs      # Application entry point
- ├── Database/            # SQL scripts for schema and data initialization
- └── README.md
+ └── Database/            # SQL scripts for schema and data initialization 
