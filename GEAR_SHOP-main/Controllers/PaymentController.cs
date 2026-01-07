@@ -26,9 +26,7 @@ namespace TL4_SHOP.Controllers
             _payPalService = payPalService;
         }
 
-        // =======================================================
         // Hiển thị trang chọn phương thức thanh toán
-        // =======================================================
         [HttpGet]
         public IActionResult SelectMethod(int orderId)
         {
@@ -49,9 +47,7 @@ namespace TL4_SHOP.Controllers
             return View(model);
         }
 
-        // =======================================================
         // Xử lý thanh toán - Chuyển hướng sang cổng
-        // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]  // ← Thêm attribute này vì đã có @Html.AntiForgeryToken()
         public async Task<IActionResult> ProcessPayment(PaymentMethodViewModel model)
@@ -84,9 +80,7 @@ namespace TL4_SHOP.Controllers
 
             Console.WriteLine($"✅ Order found: ID={order.DonHangId}, Total={order.TongTien}");
 
-            // ===========================================
-            // 💰 XỬ LÝ PAYPAL
-            // ===========================================
+            // XỬ LÝ PAYPAL
             if (model.SelectedMethod == "PayPal")
             {
                 Console.WriteLine("═══════════════════════════════════════");
@@ -403,9 +397,7 @@ namespace TL4_SHOP.Controllers
                             }
                         }
 
-        // =======================================================
         // Trang loading giả lập quá trình xử lý thanh toán
-        // =======================================================
         [HttpGet]
         public IActionResult Processing(string method, int orderId)
         {
@@ -476,9 +468,7 @@ namespace TL4_SHOP.Controllers
             return View("Result", result);
         }
 
-        // =======================================================
         // Helper Methods
-        // =======================================================
         private string GenerateTransactionId()
         {
             return $"TXN{DateTime.Now:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
