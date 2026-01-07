@@ -170,6 +170,8 @@ namespace TL4_SHOP.Controllers
         public IActionResult Detail(int id)
         {
             var donHang = _context.DonHangs
+                .Include(d => d.ChiTietDonHangs)
+                    .ThenInclude(ct => ct.SanPham)
                 .Where(d => d.DonHangId == id)
                 .Select(d => new DonHangDetailViewModel
                 {
@@ -182,12 +184,10 @@ namespace TL4_SHOP.Controllers
                     TrangThai = d.TrangThai != null ? d.TrangThai.TrangThaiId : 0,
                     PhiVanChuyen = d.PhiVanChuyen,
                     TransactionId = d.TransactionId,
-
-                    PayPalUITransactionId = d.PayPalUITransactionId,
-
                     PhuongThucThanhToan = d.PhuongThucThanhToan,
                     ChiTiet = d.ChiTietDonHangs.Select(c => new ChiTietDonHangViewModel
                     {
+                        SanPhamId = c.SanPhamId,
                         TenSanPham = c.SanPham.TenSanPham,
                         SoLuong = c.SoLuong,
                         DonGia = c.DonGia,
@@ -197,9 +197,20 @@ namespace TL4_SHOP.Controllers
                 .FirstOrDefault();
 
             if (donHang == null) return NotFound();
+
+            // Load lại đơn đầy đủ (có SanPham) để gửi PDF
+            var donHangFull = _context.DonHangs
+                .Include(d => d.ChiTietDonHangs)
+                    .ThenInclude(ct => ct.SanPham)
+                .FirstOrDefault(d => d.DonHangId == id);
+
+            if (!string.IsNullOrEmpty(donHangFull?.EmailNguoiDat))
+            {
+                SendConfirmationEmail(donHangFull.EmailNguoiDat, donHangFull);
+            }
+
             return View(donHang);
         }
-
 
         [Authorize]
         public IActionResult LichSu()

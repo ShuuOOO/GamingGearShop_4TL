@@ -26,7 +26,9 @@ namespace TL4_SHOP.Controllers
             _payPalService = payPalService;
         }
 
+        // =======================================================
         // Hiển thị trang chọn phương thức thanh toán
+        // =======================================================
         [HttpGet]
         public IActionResult SelectMethod(int orderId)
         {
@@ -47,7 +49,9 @@ namespace TL4_SHOP.Controllers
             return View(model);
         }
 
+        // =======================================================
         // Xử lý thanh toán - Chuyển hướng sang cổng
+        // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]  // ← Thêm attribute này vì đã có @Html.AntiForgeryToken()
         public async Task<IActionResult> ProcessPayment(PaymentMethodViewModel model)
@@ -80,7 +84,9 @@ namespace TL4_SHOP.Controllers
 
             Console.WriteLine($"✅ Order found: ID={order.DonHangId}, Total={order.TongTien}");
 
-            // XỬ LÝ PAYPAL
+            // ===========================================
+            // 💰 XỬ LÝ PAYPAL
+            // ===========================================
             if (model.SelectedMethod == "PayPal")
             {
                 Console.WriteLine("═══════════════════════════════════════");
@@ -163,11 +169,16 @@ namespace TL4_SHOP.Controllers
 
             return RedirectToAction("Processing", new { method = model.SelectedMethod, orderId = model.OrderId });
         }
-        
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> CapturePayment(int orderId, string token)
         {
+            Console.WriteLine("╔═══════════════════════════════════════════════════╗");
+            Console.WriteLine("║  ✅ PAYPAL CAPTURE ACTION ĐƯỢC GỌI!               ║");
+            Console.WriteLine("╚═══════════════════════════════════════════════════╝");
+            Console.WriteLine($"📦 OrderId: {orderId}");
+            Console.WriteLine($"🔑 Token: {token}");
+
             try
             {
                 var response = await _payPalService.CaptureOrderAsync(token);
@@ -177,47 +188,80 @@ namespace TL4_SHOP.Controllers
                 if (result.Status == "COMPLETED")
                 {
                     Console.WriteLine("✅ THANH TOÁN PAYPAL THÀNH CÔNG!");
+                    string payPalCaptureId = result.PurchaseUnits[0].Payments.Captures[0].Id;
+                    string payPalOrderId = token;
+                    Console.WriteLine($"💳 Capture ID: {payPalCaptureId}");
+                    Console.WriteLine($"🧾 Order ID: {payPalOrderId}");
 
-                    var capture = result.PurchaseUnits[0].Payments.Captures[0];
-                    string realPayPalTransactionId = capture.Id;
-
-                    Console.WriteLine($"💳 Real Transaction ID: {realPayPalTransactionId}");
-
+                    //UpdateOrderStatus(orderId, "Đã thanh toán", payPalCaptureId, "PayPal");
                     var order = _context.DonHangs.Find(orderId);
                     if (order != null)
                     {
-                        // Lưu mã thực tế (62P...) vào database
-                        order.TransactionId = realPayPalTransactionId;
-                        order.PayPalUITransactionId = realPayPalTransactionId;
-
+                        order.TransactionId = payPalCaptureId;     // dùng Capture ID làm giao dịch
                         order.PhuongThucThanhToan = "PayPal";
                         order.TrangThaiDonHangText = "Đã thanh toán";
+
                         _context.SaveChanges();
-                        Console.WriteLine("✅ Đã lưu mã Capture ID vào Database.");
                     }
 
-                    DateTime paymentTime = !string.IsNullOrEmpty(result.CreateTime) ? DateTime.Parse(result.CreateTime) : DateTime.Now;
+                    // ◀️ SỬA LỖI 1: Xử lý CreateTime có thể bị null
+                    DateTime paymentTime;
+                    if (!string.IsNullOrEmpty(result.CreateTime))
+                    {
+                        paymentTime = DateTime.Parse(result.CreateTime);
+                    }
+                    else
+                    {
+                        paymentTime = DateTime.Now; // Dùng giờ hiện tại làm dự phòng
+                    }
+
                     resultModel = new PaymentResultViewModel
                     {
                         Success = true,
                         Message = "Thanh toán PayPal thành công!",
                         OrderId = orderId,
-                        Amount = (order?.TongTien ?? 0),
+                        //Amount = (order?.TongTien ?? 0) + (order?.PhiVanChuyen ?? 0),
+                        Amount = (order?.TongTien ?? 0), // Không cộng thêm tiền phí vận chuyển nữa
                         PaymentMethod = "PayPal",
-                        PaymentTime = paymentTime,
-                        TransactionId = realPayPalTransactionId 
+                        PaymentTime = paymentTime, // ◀️ Dùng biến đã xử lý
+                        TransactionId = payPalCaptureId
                     };
                 }
                 else
                 {
-                    resultModel = new PaymentResultViewModel { Success = false, Message = "Giao dịch thất bại: " + result.Status };
+                    Console.WriteLine($"⚠️ PAYPAL STATUS: {result.Status}");
+                    // Lấy đơn hàng để hiển thị số tiền (kể cả khi status != COMPLETED)
+                    var order = _context.DonHangs.Find(orderId);
+                    resultModel = new PaymentResultViewModel
+                    {
+                        Success = false,
+                        Message = $"Thanh toán PayPal không thành công. (Status: {result.Status})",
+                        OrderId = orderId,
+                        PaymentMethod = "PayPal",
+                       // Amount = (order?.TongTien ?? 0) + (order?.PhiVanChuyen ?? 0) // ◀️ Thêm Amount
+                        Amount = (order?.TongTien ?? 0) // Không cộng thêm tiền phí vận chuyển nữa
+                    };
                 }
 
                 return View("Result", resultModel);
             }
             catch (Exception ex)
             {
-                return View("Result", new PaymentResultViewModel { Success = false, Message = "Lỗi: " + ex.Message });
+                Console.WriteLine($"❌ EXCEPTION khi Capture PayPal: {ex.Message}");
+
+                // ◀️ SỬA LỖI 2: Lấy thông tin đơn hàng để hiển thị số tiền khi có exception
+                var order = _context.DonHangs.Find(orderId);
+
+                var failResult = new PaymentResultViewModel
+                {
+                    Success = false,
+                    Message = "Lỗi nghiêm trọng khi xác nhận thanh toán PayPal: " + ex.Message,
+                    OrderId = orderId,
+                    PaymentMethod = "PayPal",
+                    //Amount = (order?.TongTien ?? 0) + (order?.PhiVanChuyen ?? 0) // ◀️ Thêm dòng này
+                    Amount = (order?.TongTien ?? 0) // Không cộng thêm tiền phí vận chuyển nữa
+                };
+                return View("Result", failResult);
             }
         }
 
@@ -244,8 +288,10 @@ namespace TL4_SHOP.Controllers
             };
 
             // Không cần cập nhật DB vì đơn hàng vẫn ở trạng thái "Chờ xác nhận"
+            // Người dùng có thể thử lại từ trang chi tiết đơn hàng (nếu bạn có chức năng đó)
+            // hoặc từ trang chọn phương thức thanh toán.
 
-            return View("Result", result); 
+            return View("Result", result); // Dùng lại view Result.cshtml
         }
 
         [HttpGet]
@@ -357,7 +403,9 @@ namespace TL4_SHOP.Controllers
                             }
                         }
 
-
+        // =======================================================
+        // Trang loading giả lập quá trình xử lý thanh toán
+        // =======================================================
         [HttpGet]
         public IActionResult Processing(string method, int orderId)
         {
@@ -371,7 +419,9 @@ namespace TL4_SHOP.Controllers
             return View();
         }
 
+        // =======================================================
         // Trang kết quả thanh toán thành công (cho COD/khác)
+        // =======================================================
         [HttpGet]
         public IActionResult Success(int orderId)
         {
@@ -403,7 +453,9 @@ namespace TL4_SHOP.Controllers
             return View("Result", result);
         }
 
+        // =======================================================
         // Trang kết quả thanh toán thất bại
+        // =======================================================
         [HttpGet]
         public IActionResult Failed(int orderId)
         {
@@ -424,7 +476,9 @@ namespace TL4_SHOP.Controllers
             return View("Result", result);
         }
 
+        // =======================================================
         // Helper Methods
+        // =======================================================
         private string GenerateTransactionId()
         {
             return $"TXN{DateTime.Now:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
