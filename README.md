@@ -31,7 +31,7 @@ The user interface is designed to be clean and intuitive, supporting both custom
 
 <p align="center"> <img src="https://github.com/user-attachments/assets/aba3ed15-f5c2-4fa5-8522-c30462eeefbb" width="360"/> <img src="https://github.com/user-attachments/assets/b841c8f2-f393-4fca-913a-6de0fd720f9d" width="360"/> </p> <p align="center"> <img src="https://github.com/user-attachments/assets/cffdb603-3f12-4f4c-af1e-a4ffec1fd18b" width="360"/> <img src="https://github.com/user-attachments/assets/740f624e-f8d7-4192-84c5-809f8c6d17b7" width="360"/> </p> <p align="center"> <img src="https://github.com/user-attachments/assets/68cbf091-2a03-47f3-9f6d-a6877211b252" width="360"/> <img src="https://github.com/user-attachments/assets/b5f2b1c3-e805-4858-aa67-de87f56bd9e7" width="360"/> </p>
 
-Screens: Home · Product Listing · Admin Dashboard · Checkout · VNPay · PayPal
+#### Screens: Home · Product Listing · Admin Dashboard · Checkout · VNPay · PayPal
 
 ---
 
@@ -44,6 +44,10 @@ Screens: Home · Product Listing · Admin Dashboard · Checkout · VNPay · PayP
 | **Database** | Microsoft SQL Server |
 | **Architecture** | MVC Pattern |
 | **IDEs** | Visual Studio 2019/2022, SSMS |
+
+---
+
+## Demo Video: https://youtu.be/xB1nHv52Mfs
 
 ---
 
